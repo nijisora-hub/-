@@ -14,7 +14,6 @@
         }
         .container { max-width: 500px; margin: 0 auto; }
         
-        /* ユーザー情報エリア */
         .user-profile {
             display: flex; align-items: center; justify-content: flex-end;
             gap: 8px; margin-bottom: 10px; font-size: 0.75rem;
@@ -52,7 +51,6 @@
         }
         .is-done .st-mark { visibility: visible; }
 
-        /* モーダル */
         #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .modal-inner { background: #fff; color: #333; padding: 20px; border-radius: 15px; width: 90%; max-width: 350px; text-align: left; max-height: 90vh; overflow-y: auto; }
         input { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
@@ -99,33 +97,26 @@
 <div id="modal" class="hidden">
     <div class="modal-inner">
         <h3 style="margin:0 0 15px; text-align:center;">アプリ設定</h3>
-        
         <div id="modal-auth-notice">
             <p style="font-size: 0.8rem; color: #d32f2f; margin-bottom: 8px; font-weight: bold;">⚠️ 現在未ログインです。データが保存されません。</p>
             <button class="btn-modal-login" onclick="login()">Googleでログインする</button>
             <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 15px;">
         </div>
-
         <label style="font-weight:bold; font-size:0.8rem;">目標</label>
         <input type="text" id="in-goal" placeholder="例：毎日6時に体操する！">
-        
         <label style="font-weight:bold; font-size:0.8rem;">YouTube URL</label>
         <input type="text" id="in-url" placeholder="https://youtu.be/...">
-        
         <label style="font-weight:bold; font-size:0.8rem;">ハンコ文字</label>
         <input type="text" id="in-stamp" maxlength="2" placeholder="済">
-        
         <div class="color-row" onclick="pick('bg')">背景色 <div id="v-bg" class="sw-circle"></div></div>
         <div class="color-row" onclick="pick('text')">文字色 <div id="v-text" class="sw-circle"></div></div>
         <div class="color-row" onclick="pick('stamp')">ハンコ色 <div id="v-stamp" class="sw-circle"></div></div>
-        
         <div id="palette" class="hidden"></div>
         <button onclick="saveAll()" class="btn-save">設定を保存して閉じる</button>
     </div>
 </div>
 
 <script>
-// --- 設定項目 ---
 const S_URL = 'https://fzuqxlixsyoieljykdxy.supabase.co';
 const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6dXF4bGl4c3lvaWVsanlrZHh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODA4NjIsImV4cCI6MjA5MDQ1Njg2Mn0.F5uX0CvKiazJ2ptYJ090Vb-G1HlMq8Qe48f-VeZKJUM';
 const sb = supabase.createClient(S_URL, S_KEY);
@@ -133,30 +124,25 @@ const sb = supabase.createClient(S_URL, S_KEY);
 let player, active = 'bg', apiReady = false, currentUser = null;
 let conf = { bg: '#ffffff', text: '#000000', stamp: '#ff0000', goal: '', url: '', stampTxt: '済' };
 
-// YouTube API 読み込み
 const tag = document.createElement('script');
 tag.src = "https://www.youtube.com/iframe_api";
 document.head.appendChild(tag);
 
 window.onYouTubeIframeAPIReady = () => { apiReady = true; if(conf.url) initPlayer(conf.url); };
 
-// 認証関数
 async function login() {
     await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
 }
 
 async function logout() { await sb.auth.signOut(); location.reload(); }
 
-// ログイン状態の監視
 sb.auth.onAuthStateChange((event, session) => {
     const nameEl = document.getElementById('display-name');
     const avatarEl = document.getElementById('display-avatar');
-    
     if (session) {
         currentUser = session.user;
         nameEl.innerText = currentUser.user_metadata.full_name || "ユーザー";
         avatarEl.src = currentUser.user_metadata.avatar_url || "https://via.placeholder.com/28";
-        
         document.getElementById('btn-login').classList.add('hidden');
         document.getElementById('btn-logout').classList.remove('hidden');
         document.getElementById('modal-auth-notice').classList.add('hidden');
@@ -224,7 +210,6 @@ async function saveAll() {
     conf.stampTxt = document.getElementById('in-stamp').value || '済';
     applyUI();
     document.getElementById('modal').classList.add('hidden');
-    
     if(currentUser) {
         await sb.from('user_settings').upsert({
             user_id: currentUser.id, goal_text: conf.goal, video_url: conf.url,
@@ -247,30 +232,43 @@ async function syncData() {
     document.getElementById('streak-num').innerText = dates.length;
 }
 
+// カレンダー描画ロジックの修正版
 function renderGrids(stamped) {
-    const now = new Date(), y = now.getFullYear(), m = now.getMonth();
-    const todayStr = now.toISOString().split('T')[0];
-    const lastD = new Date(y, m+1, 0).getDate();
-    const startW = new Date(y, m, 1).getDay();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    
+    // YYYY-MM-DD形式の今日の日付（ローカル時間基準）
+    const todayStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const draw = (id, isCard) => {
-        const g = document.getElementById(id); if(!g) return;
+        const g = document.getElementById(id);
+        if(!g) return;
         g.innerHTML = '';
+
+        const startW = new Date(y, m, 1).getDay();
+        const lastD = new Date(y, m + 1, 0).getDate();
+
         for(let i=0; i<startW; i++) g.appendChild(document.createElement('div'));
+
         for(let d=1; d<=lastD; d++) {
-            const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const c = document.createElement('div');
-            c.className = isCard ? `stamp-box ${stamped.includes(dateStr)?'is-done':''}` : `cell ${dateStr===todayStr?'is-today':''}`;
+            const isToday = (dateStr === todayStr);
+            
+            c.className = isCard ? `stamp-box ${stamped.includes(dateStr)?'is-done':''}` : `cell ${isToday?'is-today':''}`;
             c.innerHTML = isCard ? `<div class="st-mark">${conf.stampTxt}</div>${d}` : d;
             g.appendChild(c);
         }
     };
-    draw('cal-grid', false); draw('stamp-grid', true);
+    draw('cal-grid', false);
+    draw('stamp-grid', true);
 }
 
 async function registerDone() {
     if(!currentUser) return alert("ログインしていないためスタンプを保存できません");
-    const s = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const s = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const { error } = await sb.from('daily_stamps').insert({stamped_date:s, user_id: currentUser.id});
     if(!error) { syncData(); alert("スタンプ完了！お疲れ様でした💮"); }
 }
