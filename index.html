@@ -58,10 +58,13 @@
         input { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         
         .color-row { display: flex; align-items: center; justify-content: space-between; padding: 8px; border: 1px solid #eee; cursor: pointer; border-radius: 8px; margin-bottom: 5px; }
-        .sw-circle { width: 25px; height: 25px; border-radius: 50%; border: 1px solid #ccc; }
+        .sw-circle { width: 25px; height: 25px; border-radius: 50%; border: 1px solid #ccc; box-shadow: inset 0 0 3px rgba(0,0,0,0.2); }
         
-        .btn-save { background: #ff0000; color: #fff; border: none; padding: 15px; border-radius: 30px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; }
-        .btn-modal-login { background: #4285F4; color: #fff; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 15px; }
+        #palette { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; margin-top: 10px; background: #f0f0f0; padding: 5px; border-radius: 5px; }
+        .dot { aspect-ratio: 1/1; cursor: pointer; border: 1px solid #ddd; }
+        
+        .btn-save { background: #ff0000; color: #fff; border: none; padding: 15px; border-radius: 30px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; font-size: 1rem; }
+        .btn-modal-login { background: #4285F4; color: #fff; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 15px; font-size: 0.9rem; }
         
         .hidden { display: none !important; }
     </style>
@@ -104,10 +107,10 @@
         </div>
 
         <label style="font-weight:bold; font-size:0.8rem;">目標</label>
-        <input type="text" id="in-goal">
+        <input type="text" id="in-goal" placeholder="例：毎日6時に体操する！">
         
         <label style="font-weight:bold; font-size:0.8rem;">YouTube URL</label>
-        <input type="text" id="in-url">
+        <input type="text" id="in-url" placeholder="https://youtu.be/...">
         
         <label style="font-weight:bold; font-size:0.8rem;">ハンコ文字</label>
         <input type="text" id="in-stamp" maxlength="2" placeholder="済">
@@ -122,33 +125,35 @@
 </div>
 
 <script>
+// --- 設定項目 ---
 const S_URL = 'https://fzuqxlixsyoieljykdxy.supabase.co';
-const S_KEY = 'Sb_publishable_7MHTvw7L3omsRpjAIcTSJA_KcfdRi8q';
+const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6dXF4bGl4c3lvaWVsanlrZHh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODA4NjIsImV4cCI6MjA5MDQ1Njg2Mn0.F5uX0CvKiazJ2ptYJ090Vb-G1HlMq8Qe48f-VeZKJUM';
 const sb = supabase.createClient(S_URL, S_KEY);
 
 let player, active = 'bg', apiReady = false, currentUser = null;
 let conf = { bg: '#ffffff', text: '#000000', stamp: '#ff0000', goal: '', url: '', stampTxt: '済' };
 
+// YouTube API 読み込み
 const tag = document.createElement('script');
 tag.src = "https://www.youtube.com/iframe_api";
 document.head.appendChild(tag);
 
 window.onYouTubeIframeAPIReady = () => { apiReady = true; if(conf.url) initPlayer(conf.url); };
 
+// 認証関数
 async function login() {
     await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
 }
 
 async function logout() { await sb.auth.signOut(); location.reload(); }
 
-// ログイン状態を監視してUIを更新
+// ログイン状態の監視
 sb.auth.onAuthStateChange((event, session) => {
     const nameEl = document.getElementById('display-name');
     const avatarEl = document.getElementById('display-avatar');
     
     if (session) {
         currentUser = session.user;
-        // 名前と画像を表示
         nameEl.innerText = currentUser.user_metadata.full_name || "ユーザー";
         avatarEl.src = currentUser.user_metadata.avatar_url || "https://via.placeholder.com/28";
         
@@ -160,7 +165,6 @@ sb.auth.onAuthStateChange((event, session) => {
         currentUser = null;
         nameEl.innerText = "未ログイン";
         avatarEl.src = "https://via.placeholder.com/28?text=?";
-        
         document.getElementById('btn-login').classList.remove('hidden');
         document.getElementById('btn-logout').classList.add('hidden');
         document.getElementById('modal-auth-notice').classList.remove('hidden');
@@ -268,7 +272,7 @@ async function registerDone() {
     if(!currentUser) return alert("ログインしていないためスタンプを保存できません");
     const s = new Date().toISOString().split('T')[0];
     const { error } = await sb.from('daily_stamps').insert({stamped_date:s, user_id: currentUser.id});
-    if(!error) { syncData(); alert("スタンプ完了！"); }
+    if(!error) { syncData(); alert("スタンプ完了！お疲れ様でした💮"); }
 }
 
 function openConfig() {
