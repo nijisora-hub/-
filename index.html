@@ -18,51 +18,38 @@
             display: flex; align-items: center; justify-content: flex-end;
             gap: 8px; margin-bottom: 10px; font-size: 0.75rem;
         }
-        .user-avatar {
-            width: 28px; height: 28px; border-radius: 50%;
-            background: #eee; border: 1px solid #ccc; object-fit: cover;
-        }
+        .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: #eee; border: 1px solid #ccc; object-fit: cover; }
         .user-name { font-weight: bold; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .btn-auth { font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; border: 1px solid #ccc; cursor: pointer; background: #fff; color: #333; }
 
+        /* ビデオエリアを修正 */
         #video-frame {
-            width: 100%; aspect-ratio: 16/9; background: #333;
+            width: 100%; aspect-ratio: 16/9; background: #000;
             border-radius: 12px; overflow: hidden; margin: 10px 0;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            position: relative;
         }
-        #player { width: 100%; height: 100%; }
+        #player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
-        /* グリッド共通設定 */
         .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 5px; font-weight: bold; font-size: 0.7rem; }
         .grid-header div:nth-child(1) { color: #ff5555; }
         .grid-header div:nth-child(7) { color: #5555ff; }
         .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 8px; border: 1px solid var(--text); margin-bottom: 20px; }
 
-        /* 上段：カレンダー（今日を確認） */
         .cell { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border-radius: 50%; }
         .is-today { background: var(--stamp); color: #fff !important; font-weight: bold; box-shadow: 0 0 10px var(--stamp); }
 
-        /* 下段：スタンプカード（履歴用） */
-        .month-nav {
-            display: flex; align-items: center; justify-content: space-between;
-            margin: 10px 0; background: rgba(0,0,0,0.03); border-radius: 8px; padding: 5px;
-        }
+        .month-nav { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; background: rgba(0,0,0,0.03); border-radius: 8px; padding: 5px; }
         .month-nav button { background: #fff; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 2px 12px; font-size: 0.9rem; }
 
         .stamp-box { border: 1px solid var(--text); border-radius: 4px; background: rgba(255,255,255,0.5); aspect-ratio: 1/1; position: relative; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
-        .st-mark {
-            width: 85%; height: 85%; background: var(--stamp); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: bold; position: absolute; visibility: hidden; z-index: 2;
-        }
+        .st-mark { width: 85%; height: 85%; background: var(--stamp); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; position: absolute; visibility: hidden; z-index: 2; }
         .is-done .st-mark { visibility: visible; }
 
-        /* モーダル */
         #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 999; }
         .modal-inner { background: #fff; color: #333; padding: 20px; border-radius: 15px; width: 85%; max-width: 350px; text-align: left; }
         input { width: 100%; padding: 8px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
         .btn-save { background: #ff0000; color: #fff; border: none; padding: 12px; border-radius: 25px; cursor: pointer; width: 100%; font-weight: bold; }
-        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -90,7 +77,7 @@
 
     <div class="month-nav">
         <button onclick="changeMonth(-1)">＜</button>
-        <span id="card-month-title" style="font-weight:bold; font-size:0.9rem;">2024年 3月</span>
+        <span id="card-month-title" style="font-weight:bold; font-size:0.9rem;">----年 --月</span>
         <button onclick="changeMonth(1)">＞</button>
     </div>
     <div class="grid-header"><div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div></div>
@@ -101,7 +88,7 @@
     <div class="modal-inner">
         <h3 style="margin-top:0;">設定</h3>
         <label>目標</label><input type="text" id="in-goal">
-        <label>YouTube URL</label><input type="text" id="in-url">
+        <label>YouTube URL</label><input type="text" id="in-url" placeholder="https://www.youtube.com/watch?v=...">
         <label>ハンコ文字</label><input type="text" id="in-stamp" maxlength="2">
         <button onclick="saveAll()" class="btn-save">保存</button>
     </div>
@@ -113,14 +100,19 @@ const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
 const sb = supabase.createClient(S_URL, S_KEY);
 
 let player, apiReady = false, currentUser = null;
-let conf = { bg: '#ffffff', text: '#000000', stamp: '#ff0000', goal: '', url: '', stampTxt: '済' };
-let cardDate = new Date(); // カード表示用の日付
+let conf = { bg: '#ffffff', text: '#000000', stamp: '#ff0000', goal: '', url: 'https://www.youtube.com/watch?v=feSVtC1BSeQ', stampTxt: '済' };
+let cardDate = new Date();
 let allStamps = [];
 
-// YouTube
+// YouTube API
 const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag);
-window.onYouTubeIframeAPIReady = () => { apiReady = true; if(conf.url) initPlayer(conf.url); };
+window.onYouTubeIframeAPIReady = () => { 
+    apiReady = true; 
+    console.log("YouTube API Ready");
+    if(conf.url) initPlayer(conf.url); 
+};
 
+// 認証・同期
 async function login() { await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
 async function logout() { await sb.auth.signOut(); location.reload(); }
 
@@ -150,16 +142,35 @@ async function syncData() {
     renderAll();
 }
 
-function changeMonth(diff) {
-    cardDate.setMonth(cardDate.getMonth() + diff);
-    renderAll();
+// プレイヤー初期化を強化
+function initPlayer(url) {
+    if(!apiReady || !url) return;
+    
+    // 強力なID抽出正規表現
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    const videoId = (match && match[7].length == 11) ? match[7] : null;
+
+    if(!videoId) {
+        console.error("Invalid YouTube URL");
+        return;
+    }
+
+    if(player && player.loadVideoById) {
+        player.loadVideoById(videoId);
+    } else {
+        player = new YT.Player('player', {
+            height: '100%', width: '100%', videoId: videoId,
+            playerVars: { 'playsinline': 1, 'rel': 0 },
+            events: { 'onStateChange': (e) => { if(e.data === YT.PlayerState.ENDED) registerDone(); } }
+        });
+    }
 }
 
+// 以下、描画ロジックは変更なし
 function renderAll() {
     const now = new Date();
     const todayStr = now.toLocaleDateString('sv-SE');
-
-    // 1. 今月のカレンダー描画
     const cy = now.getFullYear(), cm = now.getMonth();
     const cGrid = document.getElementById('cal-grid');
     cGrid.innerHTML = '';
@@ -173,8 +184,6 @@ function renderAll() {
         div.innerText = d;
         cGrid.appendChild(div);
     }
-
-    // 2. 履歴カード描画
     const hy = cardDate.getFullYear(), hm = cardDate.getMonth();
     document.getElementById('card-month-title').innerText = `${hy}年 ${hm+1}月`;
     const sGrid = document.getElementById('stamp-grid');
@@ -199,14 +208,7 @@ function applyUI() {
     if(conf.url && apiReady) initPlayer(conf.url);
 }
 
-async function registerDone() {
-    if(!currentUser) return alert("ログインが必要です");
-    const s = new Date().toLocaleDateString('sv-SE');
-    if(allStamps.includes(s)) return alert("今日はもうスタンプ済みです💮");
-    const { error } = await sb.from('daily_stamps').insert({stamped_date:s, user_id: currentUser.id});
-    if(!error) { syncData(); alert("お疲れ様でした！"); }
-}
-
+function changeMonth(diff) { cardDate.setMonth(cardDate.getMonth() + diff); renderAll(); }
 function openConfig() {
     document.getElementById('modal').classList.remove('hidden');
     document.getElementById('in-goal').value = conf.goal;
@@ -228,10 +230,12 @@ async function saveAll() {
     document.getElementById('modal').classList.add('hidden');
 }
 
-function initPlayer(url) {
-    const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-    if(player) player.loadVideoById(id);
-    else player = new YT.Player('player', { videoId: id, events: { 'onStateChange': (e) => { if(e.data === YT.PlayerState.ENDED) registerDone(); } } });
+async function registerDone() {
+    if(!currentUser) return;
+    const s = new Date().toLocaleDateString('sv-SE');
+    if(allStamps.includes(s)) return;
+    const { error } = await sb.from('daily_stamps').insert({stamped_date:s, user_id: currentUser.id});
+    if(!error) { syncData(); alert("💮 スタンプ完了！お疲れ様でした！"); }
 }
 </script>
 </body>
